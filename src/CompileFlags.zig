@@ -5,7 +5,6 @@
 
 const CompileFlags = @This();
 
-arena: ArenaAllocator,
 b: *Build,
 step: Step,
 
@@ -21,7 +20,6 @@ pub fn init(b: *Build) CompileFlags {
     });
 
     return .{
-        .arena = ArenaAllocator.init(b.allocator),
         .b = b,
         .step = step,
     };
@@ -29,18 +27,13 @@ pub fn init(b: *Build) CompileFlags {
 
 /// Add an include path that will be written to the compile_flags.txt file.
 pub fn addIncludePath(self: *CompileFlags, path: LazyPath) void {
-    self.include_paths.append(self.arena.allocator(), path) catch unreachable;
-}
-
-/// This is not necessary but it's there if you want to clean up after yourself
-pub fn deinit(self: *CompileFlags) void {
-    self.arena.deinit();
+    self.include_paths.append(self.b.allocator, path) catch unreachable;
 }
 
 fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
     const self: *CompileFlags = @fieldParentPtr("step", step);
     const b = self.b;
-    const allocator = self.arena.allocator();
+    const allocator = b.allocator;
 
     var out_dir = try std.fs.openDirAbsolute(b.build_root.path.?, .{});
     defer out_dir.close();
