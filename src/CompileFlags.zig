@@ -5,30 +5,33 @@
 
 const CompileFlags = @This();
 
+pub const base_id: Step.Id = .custom;
+
 b: *Build,
 step: Step,
 
 include_paths: ArrayList(LazyPath) = .empty,
 
 /// Initialize a new CompileFlags build step.
-pub fn init(b: *Build) CompileFlags {
-    const step = Step.init(.{
-        .name = "compile-flags",
-        .owner = b,
-        .makeFn = makeFn,
-        .id = .custom,
-    });
-
-    return .{
+pub fn init(b: *Build) *CompileFlags {
+    const self = b.allocator.create(CompileFlags) catch @panic("OOM");
+    self.* = .{
         .b = b,
-        .step = step,
+        .step = .init(.{
+            .id = base_id,
+            .name = "generate-compile-flags",
+            .makeFn = &makeFn,
+            .owner = b,
+        }),
     };
+
+    return self;
 }
 
 /// Add an include path that will be written to the compile_flags.txt file.
 pub fn addIncludePath(self: *CompileFlags, path: LazyPath) void {
-    self.include_paths.append(self.b.allocator, path) catch unreachable;
     path.addStepDependencies(&self.step);
+    self.include_paths.append(self.b.allocator, path) catch unreachable;
 }
 
 fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
