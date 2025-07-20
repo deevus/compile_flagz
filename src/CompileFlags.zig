@@ -28,6 +28,7 @@ pub fn init(b: *Build) CompileFlags {
 /// Add an include path that will be written to the compile_flags.txt file.
 pub fn addIncludePath(self: *CompileFlags, path: LazyPath) void {
     self.include_paths.append(self.b.allocator, path) catch unreachable;
+    path.addStepDependencies(&self.step);
 }
 
 fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
