@@ -1,0 +1,378 @@
+# Component Design Standards for Zig
+
+This document outlines the component design standards for Zig, focusing on creating reusable, maintainable, and performant components. These guidelines are tailored for modern Zig development and emphasize utilizing the language's unique features effectively.
+
+## 1. Component Architecture
+
+### 1.1. Principles of Component Design
+
+*   **Standard:** Adhere to the principles of high cohesion and low coupling.
+    *   **Do This:** Design components that perform a single, well-defined task. Ensure that components depend on minimal external dependencies.
+    *   **Don't Do This:** Create "god" components that handle multiple unrelated responsibilities or have tight dependencies on numerous other components.
+    *   **Why:** High cohesion makes components easier to understand and modify. Low coupling reduces the impact of changes in one component on other parts of the system.
+*   **Standard:** Prefer composition over inheritance.
+    *   **Do This:** Use interfaces or function pointers to define component contracts and compose functionalities together.
+    *   **Don't Do This:** Rely heavily on inheritance, as it can lead to fragile base class problems and decreased flexibility. Zig does not have class inheritance, so focus on alternatives like composition.
+    *   **Why:** Composition promotes flexibility and reduces the risk of creating rigid hierarchies.
+*   **Standard:** Design for testability.
+    *   **Do This:** Structure components to be easily testable in isolation. Use dependency injection or similar techniques to provide mock implementations of dependencies during testing.
+    *   **Don't Do This:** Create components with hard-coded dependencies that make unit testing difficult or impossible.
+    *   **Why:** Testable components lead to more robust and reliable software.
+
+### 1.2. Component Modularity
+
+*   **Standard:** Organize components into well-defined modules.
+    *   **Do This:** Group related components into modules based on functionality.  Use Zig's "pub" keyword to control component visibility and enforce encapsulation.
+    *   **Don't Do This:** Place all components in a single monolithic module or expose internal implementation details unnecessarily.
+    *   **Why:** Modularity enhances code organization and maintainability while clearly defining public APIs.
+
+    **Example:**
+    """zig
+    // my_module.zig
+    pub const MyComponent = struct {
+        pub fn doSomething(self: *MyComponent, input: i32) i32 {
+            return self.internalFunction(input) * 2;
+        }
+
+        fn internalFunction(self: *MyComponent, value: i32) i32 {
+            // Implementation detail, not exposed publicly
+            return value + 1;
+        }
+    };
+    """
+
+    """zig
+    // main.zig
+    const std = @import("std");
+    const my_module = @import("my_module");
+
+    pub fn main() !void {
+        var component = my_module.MyComponent {};
+        const result = component.doSomething(&component, 5);
+        std.debug.print("Result: {}\n", .{result}); // Output: Result: 12
+    }
+    """
+
+*   **Standard:** Use abstract interfaces or data types to define component interactions.
+    *   **Do This:** Define interfaces or data types that express the contracts between components. Implement these interfaces within each component. This is especially important when the concrete types are determined at runtime.
+    *   **Don't Do This:** Hardcode specific component implementations as dependencies, making it difficult to swap implementations or test independently.
+    *   **Why:** Abstract interfaces promote loose coupling and enable polymorphism.
+
+    **Example:**
+    """zig
+    // interfaces.zig
+    pub const DataReader = interface {
+        pub fn readData() ![]const u8;
+    };
+
+    pub const DataWriter = interface {
+        pub fn writeData(data: []const u8) !void;
+    };
+    """
+
+    """zig
+    // component_a.zig
+    const interfaces = @import("interfaces.zig");
+    const std = @import("std");
+
+    pub const ComponentA = struct {
+        impl: *ComAImpl,
+    };
+
+    const ComAImpl = struct {
+        reader: anytype,
+        writer: anytype,
+
+        pub fn readData(self: *ComAImpl) ![]const u8 {
+            return self.reader.readData();
+        }
+
+        pub fn writeData(self: *ComAImpl, data: []const u8) !void {
+            try self.writer.writeData(data);
+        }
+    };
+
+    pub fn init(reader: anytype, writer: anytype) ComponentA {
+        return ComponentA{
+            .impl = &ComAImpl{
+                .reader = reader,
+                .writer = writer,
+            },
+        };
+    }
+    """
+
+*   **Standard:** Manage dependencies explicitly.
+    *   **Do This:** Use dependency injection or a similar mechanism to provide components with their dependencies. Prefer passing dependencies as arguments to component constructors or functions.
+    *   **Don't Do This:** Rely on global state or hard-coded dependencies, as these make testing and maintenance difficult.
+    *   **Why:** Explicit dependency management makes components more modular and testable.
+
+## 2. Component Implementation
+
+### 2.1. Data Structures
+
+*   **Standard:** Choose appropriate data structures for performance and memory efficiency.
+    *   **Do This:** Consider the specific requirements of your component when selecting data structures. Use "std.ArrayList" for dynamically sized arrays, "std.AutoHashMap" for key-value lookups, and structs for fixed-size data. Utilize comptime introspection to automatically optimize data structures.
+    *   **Don't Do This:** Use inefficient data structures without considering performance implications or introduce unnecessary copies or allocations.
+    *   **Why:** Efficient data structures are essential for achieving optimal performance.
+*   **Standard:** Consider alignment and packing.
+    *   **Do This:** Understand Zig's data layout and use "packed struct" when appropriate to minimize memory usage.  Be aware of alignment requirements on different architectures.
+    *   **Don't Do This:** Ignore alignment and packing, leading to potential memory waste or performance degradation.
+    *   **Why:** Efficient memory usage is crucial in resource-constrained environments.
+
+    **Example:**
+    """zig
+    const std = @import("std");
+
+    pub fn main() !void {
+        const UnpackedStruct = struct {
+            a: u8,
+            b: u32,
+            c: u8,
+        };
+
+        const PackedStruct = packed struct {
+            a: u8,
+            b: u32,
+            c: u8,
+        };
+
+        std.debug.print("Size of UnpackedStruct: {}\n", .{@sizeOf(UnpackedStruct)}); // Output: Size of UnpackedStruct: 12 (due to alignment)
+        std.debug.print("Size of PackedStruct: {}\n", .{@sizeOf(PackedStruct)});   // Output: Size of PackedStruct: 6
+    }
+    """
+
+### 2.2. Error Handling
+
+*   **Standard:** Use Zig's error union and "try" syntax for robust error handling.
+    *   **Do This:** Define error sets that are specific to your component. Use "try" to propagate errors to the caller. Consider using "catch" to handle specific errors or provide fallback behavior.
+    *   **Don't Do This:** Ignore errors or use generic error types that don't provide sufficient context, or rely on panics for non-exceptional situations.
+    *   **Why:** Proper error handling is essential for building reliable software.
+
+    **Example:**
+    """zig
+    const std = @import("std");
+
+    const ComponentError = error {
+        InvalidInput,
+        FileNotFound,
+    };
+
+    fn processData(input: i32) !i32 {
+        if (input < 0) {
+            return ComponentError.InvalidInput;
+        }
+        // Simulate file not found error
+        if (input == 13) {
+            return ComponentError.FileNotFound;
+        }
+        return input * 2;
+    }
+
+    pub fn main() !void {
+        const input_value: i32 = 13; // Try different values (e.g., -1 for InvalidInput)
+        const result = processData(input_value) catch |err| {
+            std.debug.print("Error processing data: {}\n", .{err});
+            return 0; // Fallback value
+        };
+
+        std.debug.print("Result: {}\n", .{result}); // If error, prints 0
+    }
+    """
+
+### 2.3. Memory Management
+
+*   **Standard:** Be explicit about memory allocation and deallocation.
+    *   **Do This:** Use Zig's allocator interface for memory management. Pass allocators explicitly to components that need to allocate memory. Ensure that all allocated memory is properly deallocated. Leverage "defer" for automatic cleanup and use arenas for managing temporary allocations.
+    *   **Don't Do This:** Rely on implicit memory management or leak memory. Avoid using global allocators without careful consideration.
+    *   **Why:** Zig offers precise control over memory, which is crucial for performance-sensitive applications.
+
+    **Example:**
+    """zig
+    const std = @import("std");
+
+    pub fn main() !void {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+
+        const allocator = arena.allocator();
+
+        const data = try allocator.alloc(u8, 10);
+        defer allocator.free(data);
+
+        for (data, 0..) |*byte, i| {
+            byte.* = @intCast(u8, i);
+        }
+
+        std.debug.print("Data: {}\n", .{data});
+    }
+    """
+
+### 2.4. Concurrency
+
+*   **Standard:** Use Zig's concurrency features to improve performance, but avoid data races.
+    *   **Do This:** Employ "std.Thread" and "std.Mutex" for concurrent execution and synchronization.  Use atomics for lock-free data sharing when appropriate.
+    *   **Don't Do This:** Introduce data races by accessing shared mutable state without proper synchronization.  Overuse locks, which can lead to performance bottlenecks.
+    *   **Why:** Concurrency can significantly improve performance, but requires careful consideration of synchronization and memory safety.
+
+## 3. Component API Design
+
+### 3.1. Naming Conventions
+
+*   **Standard:** Follow consistent naming conventions for components, functions, and variables.
+    *   **Do This:** Use PascalCase for component names, camelCase for function and variable names, SNAKE_CASE for constants. Always name things to easily understand their function.
+    *   **Don't Do This:** Use inconsistent or ambiguous names that make code difficult to understand.
+    *   **Why:** Consistent naming improves code readability and maintainability.
+
+### 3.2. Function Design
+
+*   **Standard:** Design functions to be small, focused, and easy to understand.
+    *   **Do This:** Limit the size of functions to a manageable number of lines of code (e.g., less than 50 lines per function). Extract complex logic into smaller, reusable helper functions. Return errors instead of panicking for recoverable situations.
+    *   **Don't Do This:** Create large, monolithic functions that are difficult to understand and test, or mix too much unrelated logic together.
+    *   **Why:** Small, focused functions are easier to test, debug, and maintain.
+
+### 3.3. Interoperability
+
+*   **Standard:** Consider interoperability with C and other languages, where needed.
+    *   **Do This:** Use "extern" keyword to create C-compatible interfaces. Ensure that data structures are compatible with C data types.  Carefully manage memory allocation and deallocation when crossing language boundaries. Pass allocators through the component API so allocation rules are obvious.
+    *   **Don't Do This:** Expose Zig-specific data structures directly to C code or create memory leaks when passing data between languages.
+    *   **Why:** Zig excels at providing low-level access and interfaces with other languages.
+
+    **Example:**
+    """zig
+    // zig_component.zig
+    export fn add(a: i32, b: i32) i32 {
+        return a + b;
+    }
+    """
+
+    """c
+    // main.c
+    #include <stdio.h>
+
+    extern int add(int a, int b);
+
+    int main() {
+        int result = add(5, 3);
+        printf("Result from Zig: %d\n", result);
+        return 0;
+    }
+    """
+    Compile with "zig cc main.c zig_component.zig -o main"
+
+## 4. Advanced Component Design Patterns
+
+### 4.1. Compile-Time Reflection and Code Generation
+
+*   **Standard:** Utilize compile-time reflection to generate code and optimize data structures.
+    *   **Do This:** Use "@typeInfo" and other comptime functions to inspect data types and generate code dynamically at compile time.
+    *   **Don't Do This:** Overuse compile-time reflection, which can increase compilation time.
+    *   **Why:** Compile-time reflection allows for powerful metaprogramming and optimization.
+
+    **Example:**
+    """zig
+    const std = @import("std");
+
+    pub fn main() !void {
+        const MyStruct = struct {
+            a: i32,
+            b: f32,
+        };
+
+        const type_info = @typeInfo(MyStruct);
+
+        if (type_info == .Struct) {
+            std.debug.print("MyStruct is a struct with {} fields.\n", .{type_info.Struct.fields.len});
+            for (type_info.Struct.fields) |field| {
+                std.debug.print("Field name: {}, type id: {}\n", .{field.name, field.type});
+            }
+        }
+    }
+    """
+
+### 4.2. Custom Allocators
+
+*   **Standard:** Create custom allocators for specialized memory management needs.
+    *   **Do This:** Implement the "std.mem.Allocator" interface to create custom allocators, such as stack allocators or pool allocators.
+    *   **Don't Do This:** Use standard allocators for all memory allocation needs, which may not be the most efficient solution for specific use cases.
+    *   **Why:** Custom allocators can provide significant performance improvements in certain scenarios.
+
+### 4.3. Tagged Unions for Polymorphism
+
+*   **Standard:** Employ tagged unions for implementing polymorphic behavior.
+    *   **Do This:** Define a tagged union type with different variants, each representing a specific implementation of an interface. Use a tag field to indicate the active variant.
+    *   **Don't Do This:** Rely on dynamic dispatch mechanisms, which can introduce runtime overhead and are outside of Zig's core design.
+    *   **Why:** Tagged unions provide a type-safe and efficient way to implement polymorphism without runtime dispatch overhead.
+
+    **Example:**
+
+    """zig
+    const std = @import("std");
+
+    const Shape = union(enum) {
+        circle: Circle,
+        rectangle: Rectangle,
+    };
+
+    const Circle = struct {
+        radius: f32,
+    };
+
+    const Rectangle = struct {
+        width: f32,
+        height: f32,
+    };
+
+    fn area(shape: Shape) f32 {
+        return switch (shape) {
+            .circle => |c| std.math.pi * c.radius * c.radius,
+            .rectangle => |r| r.width * r.height,
+        };
+    }
+
+    pub fn main() !void {
+        const circle = Shape{ .circle = Circle{ .radius = 5.0 } };
+        const rectangle = Shape{ .rectangle = Rectangle{ .width = 4.0, .height = 6.0 } };
+
+        std.debug.print("Circle area: {}\n", .{area(circle)});
+        std.debug.print("Rectangle area: {}\n", .{area(rectangle)});
+    }
+    """
+
+## 5. Tooling
+
+*   **Standard:** Leverage the Zig build system and package manager.
+    *   **Do This:** Structure your project according to the Zig build system conventions. Use "zig build" to compile your code and manage dependencies.
+    *   **Don't Do This:** Use custom build scripts or ignore the Zig package manager, as this can lead to inconsistencies and maintenance challenges.
+    *   **Why:** The Zig build system provides a consistent and reliable way to build and manage Zig projects.
+
+## Summary
+
+By adhering to these component design standards, Zig developers can create reusable, maintainable, performant, and secure software. The specific features of Zig, such as its explicit memory management, error handling, and compile-time reflection, should be leveraged to design components that are both efficient and easy to understand. This document provides a solid foundation for building high-quality Zig applications.
+
+## 5. Style Conventions
+
+### 5.1 Naming Conventions
+
+1. If x is a type then x should be TitleCase, unless it is a struct with 0 fields and is never meant to be instantiated, in which case it is considered to be a “namespace” and uses snake_case.
+2. If x is callable, and x’s return type is type, then x should be TitleCase.
+3. If x is otherwise callable, then x should be camelCase.
+4. Otherwise, x should be snake_case.
+5. Constants should be snake_case
+5. Avoid using abbreviations unless they are widely recognized and unambiguous.
+
+### 5.2 Imports
+
+1. Imports go at the bottom of the file.
+2. Module imports should be grouped together.
+3. Type imports should be grouped together.
+4. Type imports should be first, then module imports.
+
+### 5.3 Comments
+
+1. All public methods should have doc comments that explain their purpose, parameters, and return values.
+    a. DO NOT repeat information already present in the method signature.
+2. DO NOT generate doc comments for private methods.
+    a. The ONLY EXCEPTION is when the private method is sufficiently complex or has a non-obvious purpose.
+3. DO NOT comment sections e.g. Imports, Types, Functions, etc.
+4. Keep inline comments to a minimum, unless they provide additional context or clarify complex logic.

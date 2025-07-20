@@ -1,3 +1,8 @@
+//! CompileFlags provides a build step for generating compile_flags.txt files.
+//! This is useful for C/C++ development in projects that use Zig as their build system,
+//! enabling C/C++ language servers (like clangd) to understand include paths and
+//! providing better IDE integration and code completion for C/C++ code in Zig-built projects.
+
 const CompileFlags = @This();
 
 arena: ArenaAllocator,
@@ -6,6 +11,7 @@ step: Step,
 
 include_paths: ArrayList(LazyPath) = .empty,
 
+/// Initialize a new CompileFlags build step.
 pub fn init(b: *Build) CompileFlags {
     const step = Step.init(.{
         .name = "compile-flags",
@@ -21,10 +27,12 @@ pub fn init(b: *Build) CompileFlags {
     };
 }
 
+/// Add an include path that will be written to the compile_flags.txt file.
 pub fn addIncludePath(self: *CompileFlags, path: LazyPath) void {
     self.include_paths.append(self.arena.allocator(), path) catch unreachable;
 }
 
+/// This is not necessary but it's there if you want to clean up after yourself
 pub fn deinit(self: *CompileFlags) void {
     self.arena.deinit();
 }
@@ -47,12 +55,12 @@ fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
     }
 }
 
-const std = @import("std");
 const ArenaAllocator = std.heap.ArenaAllocator;
 const ArrayList = std.ArrayListUnmanaged;
 const Dir = std.fs.Dir;
 const File = std.fs.File;
 
+const std = @import("std");
 const Build = std.Build;
 const LazyPath = Build.LazyPath;
 const Step = Build.Step;
