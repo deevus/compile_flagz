@@ -1,0 +1,12 @@
+.{
+    .name = .compile_flagz,
+    .version = "0.0.0",
+    .fingerprint = 0x6cab08a4942db14a,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

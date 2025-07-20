@@ -1,0 +1,20 @@
+.{
+    .name = .example,
+    .version = "0.0.0",
+    .fingerprint = 0x6eec9b9f938d969a,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{
+        .compile_flagz = .{
+            .path = "../",
+        },
+        .SDL = .{
+            .url = "git+https://github.com/allyourcodebase/SDL#a4e2fe363cb8c85609f6a7d0e11c9e1c69aaad5c",
+            .hash = "SDL-2.32.6-JToi37KUEgEwL6frTPDj1iQjFZNJ8rtc3cuYHlTB00cW",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
