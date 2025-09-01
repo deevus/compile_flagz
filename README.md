@@ -17,7 +17,7 @@ A Zig library for generating `compile_flags.txt` files to improve C/C++ IDE inte
 Add `compile_flagz` to your project:
 
 ```bash
-zig fetch --save git+https://git.sr.ht/~deevus/compile_flagz
+zig fetch --save git+https://github.com/deevus/compile_flagz
 ```
 
 This will automatically add the dependency to your `build.zig.zon` file.
