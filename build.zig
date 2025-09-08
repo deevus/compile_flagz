@@ -8,7 +8,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "compile_flagz",
         .root_module = mod,
     });
