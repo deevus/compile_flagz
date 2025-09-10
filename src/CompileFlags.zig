@@ -46,12 +46,13 @@ fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
 
     var out_file = try out_dir.createFile("compile_flags.txt", .{});
     defer out_file.close();
-    var writer = out_file.writer(&buffer).interface;
+    var writer = &out_file.writer(&buffer).interface;
 
     for (self.include_paths.items) |lazy_path| {
         const path = lazy_path.getPath3(b, step);
         try writer.print("-I{s}\n", .{try path.toString(allocator)});
     }
+    try writer.flush();
 }
 
 const ArenaAllocator = std.heap.ArenaAllocator;
