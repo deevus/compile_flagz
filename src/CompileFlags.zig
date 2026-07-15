@@ -39,14 +39,22 @@ fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
     const b = self.b;
     const allocator = b.allocator;
 
-    var out_dir = try std.fs.openDirAbsolute(b.build_root.path.?, .{});
-    defer out_dir.close();
+    var init_io = Io.Threaded.init_single_threaded;
+    defer init_io.deinit();
+    const io = init_io.io();
+
+    var out_dir = try std.Io.Dir.openDirAbsolute(
+        io,
+        b.build_root.path.?,
+        .{},
+    );
+    defer out_dir.close(io);
 
     var buffer: [1024]u8 = undefined;
 
-    var out_file = try out_dir.createFile("compile_flags.txt", .{});
-    defer out_file.close();
-    var writer = out_file.writer(&buffer);
+    var out_file = try out_dir.createFile(io, "compile_flags.txt", .{});
+    defer out_file.close(io);
+    var writer = out_file.writer(io, &buffer);
     var w = &writer.interface;
 
     for (self.include_paths.items) |lazy_path| {
@@ -58,11 +66,13 @@ fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
 
 const ArenaAllocator = std.heap.ArenaAllocator;
 const ArrayList = std.ArrayListUnmanaged;
-const Dir = std.fs.Dir;
-const File = std.fs.File;
+const Dir = std.Io.Dir;
+const File = std.Io.File;
 
 const std = @import("std");
 const Build = std.Build;
 const LazyPath = Build.LazyPath;
 const Step = Build.Step;
 const TopLevelStep = Build.TopLevelStep;
+const Io = std.Io;
+
