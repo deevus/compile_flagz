@@ -8,9 +8,12 @@ const CompileFlags = @This();
 pub const base_id: Step.Id = .custom;
 
 pub const Compilers = enum {
-    zig,
+    zigcc,
+    zigcxx,
     clang,
+    clangxx,
     gcc,
+    gxx,
 };
 
 b: *Build,
@@ -24,7 +27,7 @@ pub fn init(b: *Build) *CompileFlags {
     const self = b.allocator.create(CompileFlags) catch @panic("OOM");
     self.* = .{
         .b = b,
-        .selected_compiler = Compilers.zig,
+        .selected_compiler = Compilers.zigcxx,
         .step = .init(.{
             .id = base_id,
             .name = "generate-compile-flags",
@@ -129,10 +132,14 @@ fn getCompilerIncludePaths(self: *CompileFlags) !void {
         "-v",
     };
 
+    // NOTE: strategy pattern, form compiler args
     const program = switch (selected_compiler) {
-        .zig => comptime &[_][]const u8{ "zig", "c++" } ++ program_args,
-        .clang => comptime &[_][]const u8{"clang++"} ++ program_args,
-        .gcc => comptime &[_][]const u8{"g++"} ++ program_args,
+        .zigcxx => comptime &[_][]const u8{ "zig", "c++" } ++ program_args,
+        .zigcc => comptime &[_][]const u8{ "zig", "cc" } ++ program_args,
+        .clang => comptime &[_][]const u8{"clang"} ++ program_args,
+        .clangxx => comptime &[_][]const u8{"clang++"} ++ program_args,
+        .gcc => comptime &[_][]const u8{"gcc"} ++ program_args,
+        .gxx => comptime &[_][]const u8{"g++"} ++ program_args,
     };
 
     var code: u8 = undefined;
