@@ -27,28 +27,33 @@ pub const Compilers = enum {
     gxx,
 };
 
+pub const LanguageVariants = enum {
+    cxx11,
+    cxx14,
+    cxx17,
+    cxx20,
+    cxx23,
+};
+
 b: *Build,
 step: Step,
 selected_compiler: Compilers,
+language_variant: []const u8,
+warnings: []const []const u8,
+custom: ?[]const []const u8,
 
 include_paths: ArrayList(LazyPath) = .empty,
 
-/// Initialize a new CompileFlags build step.
-pub fn init(b: *Build) *CompileFlags {
-    const self = b.allocator.create(CompileFlags) catch @panic("OOM");
-    self.* = .{
-        .b = b,
-        .selected_compiler = Compilers.zigcxx,
-        .step = .init(.{
-            .id = base_id,
-            .name = "generate-compile-flags",
-            .makeFn = &makeFn,
-            .owner = b,
-        }),
-    };
-
-    return self;
-}
+pub const Config = struct {
+    language_variant: LanguageVariants,
+    warnings: struct {
+        Wall: bool,
+        Werror: bool,
+    },
+    compiler: Compilers,
+    paths: []const LazyPath,
+    custom: ?[]const []const u8,
+};
 
 /// Add an include path that will be written to the compile_flags.txt file.
 ///
@@ -61,13 +66,47 @@ pub fn addIncludePath(self: *CompileFlags, path: LazyPath) void {
     self.include_paths.append(self.b.allocator, path) catch unreachable;
 }
 
-/// Add include paths obtained from compiler pre-processor paths
-///
-/// Example:
-///
-/// cflags.addSelectedCompilerIncludePaths(.zig)
-pub fn addCompilerIncludePaths(self: *CompileFlags, compiler: Compilers) void {
-    self.selected_compiler = compiler;
+fn buildWarnings(self: *CompileFlags, args: Config) void {
+    if (args.warnings.Wall and args.warnings.Werror) {
+        self.warnings = &[_][]const u8{ "-Wall", "-Werror" };
+    }
+}
+
+/// Initialize a new CompileFlags build step.
+pub fn init(b: *Build, args: Config) *CompileFlags {
+    const self = b.allocator.create(CompileFlags) catch @panic("OOM");
+
+    self.* = .{
+        .b = b,
+        .selected_compiler = args.compiler,
+        .language_variant = switch (args.language_variant) {
+            .cxx11 => "c++11",
+            .cxx14 => "c++14",
+            .cxx17 => "c++17",
+            .cxx20 => "c++20",
+            .cxx23 => "c++23",
+        },
+        .warnings = &[_][]const u8{},
+        .custom = null,
+        .step = .init(.{
+            .id = base_id,
+            .name = "generate-compile-flags",
+            .makeFn = &makeFn,
+            .owner = b,
+        }),
+    };
+
+    self.buildWarnings(args);
+
+    for (args.paths) |path| {
+        self.addIncludePath(path);
+    }
+
+    if (args.custom) |custom_flags| {
+        self.custom = custom_flags;
+    }
+
+    return self;
 }
 
 const RunError = error{
@@ -212,12 +251,23 @@ fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
     var writer = out_file.writer(io, &buffer);
     var w = &writer.interface;
 
+    try w.print("-std={s}\n", .{self.language_variant});
+
+    for (self.warnings) |value| {
+        try w.print("{s}\n", .{value});
+    }
+
     for (self.include_paths.items) |lazy_path| {
         const path = lazy_path.getPath3(b, step);
         try w.print("-I{s}\n", .{try path.toString(allocator)});
     }
+
+    if (self.custom) |custom_flags| {
+        for (custom_flags) |flag| {
+            try w.print("{s}\n", .{flag});
+        }
+    }
+
     try w.flush();
 }
-
-
 

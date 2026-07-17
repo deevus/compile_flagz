@@ -1,3 +1,10 @@
+const std = @import("std");
+const Build = std.Build;
+const LazyPath = Build.LazyPath;
+const Step = Build.Step;
+
+const CompileFlags = @import("src/CompileFlags.zig");
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -43,13 +50,6 @@ fn buildDocs(
 /// The returned CompileFlags instance can be used to add include paths and
 /// generate a compile_flags.txt file for C/C++ language server integration
 /// when developing C/C++ code in projects that use Zig as their build system.
-pub fn addCompileFlags(b: *Build) *CompileFlags {
-    return .init(b);
+pub fn configureCompileFlags(b: *Build, args: CompileFlags.Config) *CompileFlags {
+    return .init(b, args);
 }
-
-const std = @import("std");
-const Build = std.Build;
-const LazyPath = Build.LazyPath;
-const Step = Build.Step;
-
-const CompileFlags = @import("src/CompileFlags.zig");
