@@ -2,6 +2,17 @@
 //! This is useful for C/C++ development in projects that use Zig as their build system,
 //! enabling C/C++ language servers (like clangd) to understand include paths and
 //! providing better IDE integration and code completion for C/C++ code in Zig-built projects.
+const std = @import("std");
+const Build = std.Build;
+const LazyPath = Build.LazyPath;
+const Step = Build.Step;
+const TopLevelStep = Build.TopLevelStep;
+const Io = std.Io;
+
+const ArenaAllocator = std.heap.ArenaAllocator;
+const ArrayList = std.ArrayListUnmanaged;
+const Dir = std.Io.Dir;
+const File = std.Io.File;
 
 const CompileFlags = @This();
 
@@ -208,15 +219,5 @@ fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
     try w.flush();
 }
 
-const ArenaAllocator = std.heap.ArenaAllocator;
-const ArrayList = std.ArrayListUnmanaged;
-const Dir = std.Io.Dir;
-const File = std.Io.File;
 
-const std = @import("std");
-const Build = std.Build;
-const LazyPath = Build.LazyPath;
-const Step = Build.Step;
-const TopLevelStep = Build.TopLevelStep;
-const Io = std.Io;
 
