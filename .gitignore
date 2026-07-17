@@ -2,3 +2,4 @@
 compile_flags.txt
 zig-out/
 /.direnv
+zig-pkg/
