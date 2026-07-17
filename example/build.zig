@@ -7,9 +7,16 @@ pub fn build(b: *std.Build) void {
 
     const sdl = b.dependency("SDL", .{});
 
-    var cflags = compile_flagz.addCompileFlags(b);
-    cflags.addIncludePath(b.path("include"));
-    cflags.addIncludePath(sdl.builder.path("include"));
+    var cflags = compile_flagz.configureCompileFlags(b, .{
+        .language_variant = .cxx23,
+        .warnings = .{ .Wall = true },
+        .compiler = .zigcxx,
+        .paths = &[_]std.Build.LazyPath{
+            b.path("include"),
+            sdl.builder.path("include"),
+        },
+        .custom = null,
+    });
 
     const cflags_step = b.step("compile-flags", "Generate compile flags");
     cflags_step.dependOn(&cflags.step);
