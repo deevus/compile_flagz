@@ -38,8 +38,8 @@ pub const Config = struct {
     enable_verbose_output: ?bool = false,
     language_variant: LanguageVariant = .cxx23,
     warnings: struct {
-        all: bool = true,
-        errors: bool = true,
+        all: bool = false,
+        errors: bool = false,
         extra: bool = false,
     },
     compiler: Compiler = .zigcxx,
@@ -59,9 +59,28 @@ pub fn addIncludePath(self: *CompileFlags, path: LazyPath) void {
 }
 
 fn buildWarnings(self: *CompileFlags, args: Config) void {
-    if (args.warnings.Wall and args.warnings.Werror) {
-        self.warnings = &[_][]const u8{ "-Wall", "-Werror" };
+    const b = self.b;
+
+    var warnings = std.ArrayList([]const u8).empty;
+    defer warnings.deinit(b.allocator);
+
+    if (args.warnings.all) {
+        warnings.append(b.allocator, "-Wall") catch @panic("OOM");
     }
+
+    if (args.warnings.errors) {
+        warnings.append(b.allocator, "-Werror") catch @panic("OOM");
+    }
+
+    if (args.warnings.extra) {
+        warnings.append(b.allocator, "-Wextra") catch @panic("OOM");
+    }
+
+    self.warnings = warnings.toOwnedSlice(b.allocator) catch @panic("failed to move slice");
+
+    // if (args.warnings.all and args.warnings.errors) {
+    //     self.warnings = &[_][]const u8{ "-Wall", "-Werror" };
+    // }
 }
 
 /// Initialize a new CompileFlags build step.
@@ -137,7 +156,7 @@ fn runAllowFail(
     });
 
     // swap out stdout -> stderr
-    var stderr_reader = child.stderr.readerStreaming(io, &.{}) orelse @panic("failed to pipe process");
+    var stderr_reader = child.stderr.?.readerStreaming(io, &.{});
     const stderr = stderr_reader.interface.allocRemaining(b.allocator, .limited(max_output_size)) catch {
         return error.ReadFailure;
     };
