@@ -30,10 +30,12 @@ selected_compiler: Compiler,
 language_variant: []const u8,
 warnings: []const []const u8,
 custom: ?[]const []const u8,
+is_verbose_output_enabled: bool,
 
 include_paths: ArrayList(LazyPath) = .empty,
 
 pub const Config = struct {
+    enable_verbose_output: ?bool = false,
     language_variant: LanguageVariant = .cxx23,
     warnings: struct {
         all: bool = true,
@@ -78,6 +80,7 @@ pub fn init(b: *Build, args: Config) *CompileFlags {
         },
         .warnings = &[_][]const u8{},
         .custom = null,
+        .is_verbose_output_enabled = args.enable_verbose_output orelse false,
         .step = .init(.{
             .id = base_id,
             .name = "generate-compile-flags",
@@ -190,7 +193,9 @@ fn getCompilerIncludePaths(self: *CompileFlags) !void {
         .pipe,
     );
 
-    std.debug.print("{s}", .{process});
+    if (self.is_verbose_output_enabled) {
+        std.debug.print("{s}", .{process});
+    }
 
     var process_result = std.mem.splitScalar(
         u8,

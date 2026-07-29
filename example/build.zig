@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) void {
     const sdl = b.dependency("SDL", .{});
 
     var cflags = compile_flagz.addCompileFlags(b, .{
+        .enable_verbose_output = false,
         .language_variant = .cxx23,
         .warnings = .{
             .all = true,
