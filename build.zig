@@ -1,10 +1,3 @@
-const std = @import("std");
-const Build = std.Build;
-const LazyPath = Build.LazyPath;
-const Step = Build.Step;
-
-const CompileFlags = @import("src/CompileFlags.zig");
-
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -53,3 +46,10 @@ fn buildDocs(
 pub fn addCompileFlags(b: *Build, args: CompileFlags.Config) *CompileFlags {
     return .init(b, args);
 }
+
+const std = @import("std");
+const Build = std.Build;
+const LazyPath = Build.LazyPath;
+const Step = Build.Step;
+
+const CompileFlags = @import("src/CompileFlags.zig");
