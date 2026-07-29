@@ -9,7 +9,11 @@ pub fn build(b: *std.Build) void {
 
     var cflags = compile_flagz.addCompileFlags(b, .{
         .language_variant = .cxx23,
-        .warnings = .{ .Wall = true },
+        .warnings = .{
+            .all = true,
+            .errors = false,
+            .extra = false,
+        },
         .compiler = .zigcxx,
         .paths = &[_]std.Build.LazyPath{
             b.path("include"),

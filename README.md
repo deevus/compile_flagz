@@ -38,6 +38,8 @@ pub fn build(b: *std.Build) void {
         .language_variant = .cxx23,
         .warnings = .{
             .all = true,
+            .errors = false,
+            .extra = false,
         },
         .compiler = .zigcxx,
         .paths = &[_]std.Build.LazyPath{

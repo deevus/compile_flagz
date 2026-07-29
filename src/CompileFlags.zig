@@ -36,8 +36,9 @@ include_paths: ArrayList(LazyPath) = .empty,
 pub const Config = struct {
     language_variant: LanguageVariant = .cxx23,
     warnings: struct {
-        Wall: bool,
-        Werror: bool,
+        all: bool = true,
+        errors: bool = true,
+        extra: bool = false,
     },
     compiler: Compiler = .zigcxx,
     paths: []const LazyPath = &.{},
