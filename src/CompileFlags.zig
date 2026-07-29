@@ -55,7 +55,7 @@ pub const Config = struct {
 /// cflags.addIncludePath(DEP_GTEST.path("include"))
 pub fn addIncludePath(self: *CompileFlags, path: LazyPath) void {
     path.addStepDependencies(&self.step);
-    self.include_paths.append(self.b.allocator, path) catch unreachable;
+    self.include_paths.append(self.b.allocator, path) catch @panic("OOM");
 }
 
 fn buildWarnings(self: *CompileFlags, args: Config) void {
@@ -137,7 +137,7 @@ fn runAllowFail(
     });
 
     // swap out stdout -> stderr
-    var stderr_reader = child.stderr.?.readerStreaming(io, &.{});
+    var stderr_reader = child.stderr.readerStreaming(io, &.{}) orelse @panic("failed to pipe process");
     const stderr = stderr_reader.interface.allocRemaining(b.allocator, .limited(max_output_size)) catch {
         return error.ReadFailure;
     };
