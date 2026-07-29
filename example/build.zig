@@ -7,7 +7,7 @@ pub fn build(b: *std.Build) void {
 
     const sdl = b.dependency("SDL", .{});
 
-    var cflags = compile_flagz.configureCompileFlags(b, .{
+    var cflags = compile_flagz.addCompileFlags(b, .{
         .language_variant = .cxx23,
         .warnings = .{ .Wall = true },
         .compiler = .zigcxx,

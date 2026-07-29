@@ -50,6 +50,6 @@ fn buildDocs(
 /// The returned CompileFlags instance can be used to add include paths and
 /// generate a compile_flags.txt file for C/C++ language server integration
 /// when developing C/C++ code in projects that use Zig as their build system.
-pub fn configureCompileFlags(b: *Build, args: CompileFlags.Config) *CompileFlags {
+pub fn addCompileFlags(b: *Build, args: CompileFlags.Config) *CompileFlags {
     return .init(b, args);
 }
