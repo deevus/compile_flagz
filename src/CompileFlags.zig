@@ -7,7 +7,7 @@ const CompileFlags = @This();
 
 pub const base_id: Step.Id = .custom;
 
-pub const Compilers = enum {
+pub const Compiler = enum {
     zigcc,
     zigcxx,
     clang,
@@ -16,7 +16,7 @@ pub const Compilers = enum {
     gxx,
 };
 
-pub const LanguageVariants = enum {
+pub const LanguageVariant = enum {
     cxx11,
     cxx14,
     cxx17,
@@ -26,7 +26,7 @@ pub const LanguageVariants = enum {
 
 b: *Build,
 step: Step,
-selected_compiler: Compilers,
+selected_compiler: Compiler,
 language_variant: []const u8,
 warnings: []const []const u8,
 custom: ?[]const []const u8,
@@ -34,14 +34,14 @@ custom: ?[]const []const u8,
 include_paths: ArrayList(LazyPath) = .empty,
 
 pub const Config = struct {
-    language_variant: LanguageVariants,
+    language_variant: LanguageVariant = .cxx23,
     warnings: struct {
         Wall: bool,
         Werror: bool,
     },
-    compiler: Compilers,
-    paths: []const LazyPath,
-    custom: ?[]const []const u8,
+    compiler: Compiler = .zigcxx,
+    paths: []const LazyPath = &.{},
+    custom: ?[]const []const u8 = &.{},
 };
 
 /// Add an include path that will be written to the compile_flags.txt file.
