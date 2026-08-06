@@ -182,21 +182,16 @@ pub fn init(b: *Build, args: Config) *CompileFlags {
     return self;
 }
 
-const RunError = error{
-    ReadFailure,
-    ExitCodeFailure,
-    ProcessTerminated,
-    ExecNotSupported,
-} || std.process.SpawnError;
-
 // NOTE: It's a pain in the ass to get stderr using std.Build.runAllowFail
 // so this is a fork primarily using stderr
 fn runAllowFail(
     b: *Build,
     argv: []const []const u8,
-    out_code: *u8,
     stderr_behavior: std.process.SpawnOptions.StdIo,
-) RunError![]u8 {
+) struct {
+    stderr: []u8,
+    out_code: u8,
+} {
     std.debug.assert(argv.len != 0);
 
     if (!std.process.can_spawn)
@@ -206,39 +201,40 @@ fn runAllowFail(
     const io = graph.io;
 
     const max_output_size = 400 * 1024;
-    try Step.handleVerbose2(b, .inherit, &graph.environ_map, argv);
+    Step.handleVerbose2(b, .inherit, &graph.environ_map, argv) catch @panic("OOM");
 
-    var child = try std.process.spawn(io, .{
+    var child = std.process.spawn(io, .{
         .argv = argv,
         .environ_map = &graph.environ_map,
         .stdin = .ignore,
         .stdout = .pipe,
         .stderr = stderr_behavior,
-    });
+    }) catch @panic("failed to spawn child process");
 
     // swap out stdout -> stderr
-    var stderr_reader = child.stderr.?.readerStreaming(io, &.{});
-    const stderr = stderr_reader.interface.allocRemaining(b.allocator, .limited(max_output_size)) catch {
-        return error.ReadFailure;
-    };
-    errdefer b.allocator.free(stderr);
+    var child_stderr = child.stderr orelse @panic("failed to get child process stderr");
+    var stderr_reader = child_stderr.readerStreaming(io, &.{});
+    const stderr_output = stderr_reader.interface.allocRemaining(b.allocator, .limited(max_output_size)) catch @panic("failed to read process stderr output");
 
-    const term = try child.wait(io);
+    const term = child.wait(io) catch |err| @panic(b.fmt("failed to wait for child process: {any}", .{err}));
     switch (term) {
         .exited => |code| {
-            if (code != 0) {
-                out_code.* = @as(u8, @truncate(code));
-                return error.ExitCodeFailure;
-            }
-            return stderr;
+            return .{
+                .stderr = stderr_output,
+                .out_code = @as(u8, @truncate(code)),
+            };
         },
         .signal, .stopped => |sig| {
-            out_code.* = @as(u8, @truncate(@intFromEnum(sig)));
-            return error.ProcessTerminated;
+            return .{
+                .stderr = stderr_output,
+                .out_code = @as(u8, @truncate(@intFromEnum(sig))),
+            };
         },
         .unknown => |code| {
-            out_code.* = @as(u8, @truncate(code));
-            return error.ProcessTerminated;
+            return .{
+                .stderr = stderr_output,
+                .out_code = @as(u8, @truncate(code)),
+            };
         },
     }
 }
@@ -247,24 +243,21 @@ fn getCompilerIncludePaths(self: *CompileFlags) !void {
     const b = self.b;
     const selected_compiler = self.selected_compiler;
 
-    // NOTE: strategy pattern, form compiler args
     const program = selected_compiler.getProgramArgs();
 
-    var code: u8 = undefined;
-    const process = try runAllowFail(
+    const process = runAllowFail(
         b,
         program,
-        &code,
         .pipe,
     );
 
     if (self.is_verbose_output_enabled) {
-        std.debug.print("{s}", .{process});
+        std.debug.print("{s}", .{process.stderr});
     }
 
     var process_result = std.mem.splitScalar(
         u8,
-        process,
+        process.stderr,
         '\n',
     );
 
