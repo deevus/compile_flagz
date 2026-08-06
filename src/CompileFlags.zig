@@ -14,6 +14,67 @@ pub const Compiler = enum {
     clangxx,
     gcc,
     gxx,
+
+    fn getProgramArgs(self: Compiler) []const []const u8 {
+        return switch (self) {
+            .zigcxx => comptime &[_][]const u8{
+                "zig",
+                "c++",
+
+                "-E",
+                "-x",
+                "c++",
+                "-",
+                "-v",
+            },
+            .zigcc => comptime &[_][]const u8{
+                "zig",
+                "cc",
+
+                "-E",
+                "-x",
+                "c",
+                "-",
+                "-v",
+            },
+            .clang => comptime &[_][]const u8{
+                "clang",
+
+                "-E",
+                "-x",
+                "c",
+                "-",
+                "-v",
+            },
+            .clangxx => comptime &[_][]const u8{
+                "clang++",
+
+                "-E",
+                "-x",
+                "c++",
+                "-",
+                "-v",
+            },
+            .gcc => comptime &[_][]const u8{
+                "gcc",
+
+                "-E",
+                "-x",
+                "c",
+                "-",
+                "-v",
+            },
+            .gxx => comptime &[_][]const u8{
+                "g++",
+
+                "-E",
+                "-x",
+                "c++",
+                "-",
+                "-v",
+            },
+        };
+    }
 };
 
 pub const LanguageVariant = enum {
@@ -186,23 +247,8 @@ fn getCompilerIncludePaths(self: *CompileFlags) !void {
     const b = self.b;
     const selected_compiler = self.selected_compiler;
 
-    const program_args = &[_][]const u8{
-        "-E",
-        "-x",
-        "c++",
-        "-",
-        "-v",
-    };
-
     // NOTE: strategy pattern, form compiler args
-    const program = switch (selected_compiler) {
-        .zigcxx => comptime &[_][]const u8{ "zig", "c++" } ++ program_args,
-        .zigcc => comptime &[_][]const u8{ "zig", "cc" } ++ program_args,
-        .clang => comptime &[_][]const u8{"clang"} ++ program_args,
-        .clangxx => comptime &[_][]const u8{"clang++"} ++ program_args,
-        .gcc => comptime &[_][]const u8{"gcc"} ++ program_args,
-        .gxx => comptime &[_][]const u8{"g++"} ++ program_args,
-    };
+    const program = selected_compiler.getProgramArgs();
 
     var code: u8 = undefined;
     const process = try runAllowFail(
