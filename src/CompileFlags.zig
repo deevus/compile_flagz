@@ -312,7 +312,19 @@ fn makeFn(step: *Step, _: Step.MakeOptions) anyerror!void {
 
     for (self.include_paths.items) |lazy_path| {
         const path = lazy_path.getPath3(b, step);
-        try w.print("-I{s}\n", .{try path.toString(allocator)});
+        var path_string = try path.toString(allocator);
+
+        // NOTE: deal with framework paths; macos
+        if (std.mem.endsWith(u8, path_string, "(framework directory)")) {
+            path_string = path_string[0 .. path_string.len - "(framework directory)".len];
+            path_string = @constCast(std.mem.trim(u8, path_string, " "));
+
+            try w.print("-F{s}\n", .{path_string});
+
+            continue;
+        }
+
+        try w.print("-I{s}\n", .{path_string});
     }
 
     if (self.custom) |custom_flags| {
