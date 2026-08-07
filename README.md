@@ -31,14 +31,30 @@ const compile_flagz = @import("compile_flagz");
 
 pub fn build(b: *std.Build) void {
     // Your existing build configuration...
-    
+
     // Create compile flags generator
-    var cflags = compile_flagz.addCompileFlags(b);
-    
-    // Add include paths
-    cflags.addIncludePath(b.path("include"));
-    cflags.addIncludePath(dependency.builder.path("include"));
-    
+    var cflags = compile_flagz.addCompileFlags(b, .{
+        .enable_verbose_output = true, // NOTE: optional
+        .language_variant = .cxx23,
+        .warnings = .{
+            .all = true,
+            .errors = false,
+            .extra = false,
+        },
+        .compiler = .zigcxx,
+        .paths = &[_]std.Build.LazyPath{
+            b.path("include"), // Add include paths
+            sdl.builder.path("include"),
+        },
+        .custom = &[_][]const u8{
+            "-D_LIBCPP_HAS_FILESYSTEM=1", // Define macros
+            "-D_LIBCPP_HAS_THREADS=1",
+            "-D_LIBCPP_HAS_TIME_ZONE_DATABASE=1",
+            "-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_NONE",
+            "-D_LIBCPP_HAS_MONOTONIC_CLOCK=1",
+        },
+    });
+
     // Create the build step
     const cflags_step = b.step("compile-flags", "Generate compile_flags.txt for C/C++ IDE support");
     cflags_step.dependOn(&cflags.step);
@@ -77,7 +93,7 @@ The generated documentation will be available in `zig-out/docs/`.
 
 ## Requirements
 
-- Zig 0.14.1 or later
+- Zig >=0.16.0
 
 ## License
 

@@ -2,20 +2,22 @@
 //! you are building an executable. If you are making a library, the convention
 //! is to delete this file and start with root.zig instead.
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io: Io = init.io;
+
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
 
     // stdout is for the actual output of your application, for example if you
     // are implementing gzip, then only the compressed bytes should be sent to
     // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_file = std.Io.File.stdout().writer(io, &stdout_buffer);
+    const stdout = &stdout_file.interface;
 
     try stdout.print("Run `zig build test` to run the tests.\n", .{});
 
-    try bw.flush(); // Don't forget to flush!
+    try stdout.flush(); // Don't forget to flush!
 }
 
 test "simple test" {
@@ -41,6 +43,7 @@ test "fuzz example" {
 }
 
 const std = @import("std");
+const Io = std.Io;
 
 /// This imports the separate module containing `root.zig`. Take a look in `build.zig` for details.
 const lib = @import("example_lib");
